@@ -2,29 +2,30 @@
 # vi: set ft=ruby :
 
 Vagrant.configure("2") do |config|
+  
+  config.vm.define "ubuntu2" do |ubuntu2|
+    ubuntu2.vm.box = 'ubuntu/xenial64'
+    ubuntu2.vm.box_check_update = false
+    ubuntu2.vm.network "private_network", ip: "10.0.15.31"
+    ubuntu2.vm.network "forwarded_port", guest: 5601, host: 5600 #kivana
+    ubuntu2.vm.network "forwarded_port", guest: 5044, host: 5055
+    ubuntu2.vm.network "forwarded_port", guest: 9200, host: 9201
+    ubuntu2.vm.provider "virtualbox" do |vb|
+      vb.memory = "3000"
+      vb.cpus = 2
+    end
+    ubuntu2.vm.provision "shell", path: "ELK_configure.sh"
+  end
+
   config.vm.define "ubuntu1" do |ubuntu1|
     ubuntu1.vm.box = "ubuntu/xenial64"
     ubuntu1.vm.box_check_update = false
     ubuntu1.vm.network "private_network", ip: "10.0.15.30"
     ubuntu1.vm.network "forwarded_port", guest: 80, host: 8000
     ubuntu1.vm.provider "virtualbox" do |vb|
-      vb.memory = "1024"
+      vb.memory = "2560"
     end
     ubuntu1.vm.provision "shell", path: "bootstrap.sh"
-  end
-
-  config.vm.define "ubuntu2" do |ubuntu2|
-    ubuntu2.vm.box = 'ubuntu/xenial64'
-    ubuntu2.vm.box_check_update = false
-    ubuntu2.vm.network "private_network", ip: "10.0.15.30"
-    ubuntu2.vm.network "forwarded_port", guest: 5601, host: 5600 #kivana
- 
-
-    ubuntu2.vm.provider "virtualbox" do |vb|
-      vb.memory = "2560"
-      vb.cpus = 2
-    end
-    ubuntu2.vm.provision "shell", path: "ELK_configure.sh"
   end
 end
   # Create a forwarded port mapping which allows access to a specific port

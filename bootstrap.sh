@@ -1,6 +1,7 @@
 
 #!/usr/bin/env bash
 
+
 DBNAME=wordpress_db
 DBUSER=keepcoding
 DBPASSWD=keepcoding
@@ -85,12 +86,14 @@ sudo apt-get update && sudo apt-get install -y filebeat
 sudo sed -i '176 c\ #output.elasticsearch:' /etc/filebeat/filebeat.yml
 sudo sed -i '178 c\ #hosts: ["localhost:9200"]' /etc/filebeat/filebeat.yml
 sudo sed -i '189 c\ output.logstash:' /etc/filebeat/filebeat.yml
-sudo sed -i '191 c\ hosts: ["localhost:5044"]' /etc/filebeat/filebeat.yml
+sudo sed -i '191 c\ hosts: ["10.0.15.31:5045"]' /etc/filebeat/filebeat.yml
+
+sudo filebeat export template > filebeat.template.json
+curl -XPUT -H 'Content-Type: application/json' http://10.0.15.31:9201/_template/filebeat-7.9.3 -d@filebeat.template.json
 
 # load the  index template into Elasticsearch manually:./filebeat setup --template -E output.logstash.enabled=false -E 'output.elasticsearch.hosts=["localhost:9200"]'
-sudo ./filebeat setup --template -E output.logstash.enabled=false -E 'output.elasticsearch.hosts=["localhost:9200"]'
-#sudo filebeat setup --template -E output.logstash.enabled=false -E 'output.elasticsearch.hosts=["10.0.15.30:9200"]'
-sudo filebeat setup -e -E output.logstash.enabled=false -E output.elasticsearch.hosts=['10.0.15.30:9200'] -E setup.kibana.host=10.0.15.30:5601
+#sudo filebeat setup --index-management -E output.logstash.enabled=false -E 'output.elasticsearch.hosts=["10.0.15.31:9201"]'
+#sudo filebeat setup -e -E output.logstash.enabled=false -E output.elasticsearch.hosts=['10.0.15.30:9200'] -E setup.kibana.host=10.0.15.30:5601
 sudo systemctl start filebeat
 sudo systemctl enable filebeat
 

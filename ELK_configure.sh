@@ -1,85 +1,120 @@
 
 #!/usr/bin/env bash
 
-DBNAME=wordpress_db
-DBUSER=keepcoding
-DBPASSWD=keepcoding
-
 apt-get update
-apt-get install vim curl git nginx -y
+apt-get install curl nginx -y
 
 # install java 8
 sudo apt-get install default-jre -y
 
 ################################################################
 
-#Instalar logstash
+#Instalar elasticsearch
+
 wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch | sudo apt-key add -
-echo "deb https://artifacts.elastic.co/packages/7.x/apt stable main" | sudo tee -a /etc/apt/sources.list.d/elastic-7.x.list
+echo "deb https://artifacts.elastic.co/packages/6.x/apt stable main" | sudo tee -a /etc/apt/sources.list.d/elastic-6.x.list
+
+sudo apt-get update && sudo apt-get install -y elasticsearch 
+
+#sudo chmod 777 /etc/elasticsearch
+# sudo cat  > /etc/elasticsearch/elasticsearch.yml << EOF
+# path.data: /var/lib/elasticsearch
+# path.logs: /var/log/elasticsearch
+# network.host: localhost
+# http.port: 9200
+# EOF
+
+sudo systemctl start elasticsearch
+sudo systemctl enable elasticsearch
+
+
+# available on startup
+#update-rc.d elasticsearch defaults 95 10
+
+################################################################
+
+#Instalar Kibana
+sudo apt-get install -y kibana 
+
+sudo systemctl enable kibana
+sudo systemctl start kibana
+
+#Crear proxy enrutamiento
+sudo cat > /etc/nginx/sites-available/10.0.15.31 << EOF
+server {
+    listen 5600;
+
+    server_name 10.0.15.31;
+
+    location / {
+        proxy_pass http://localhost:5601;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade '$http_upgrade';
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host '$host';
+        proxy_cache_bypass '$http_upgrade';
+    }
+}
+server {
+    listen 9201;
+
+    server_name 10.0.15.31;
+
+    location / {
+        proxy_pass http://localhost:9200;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade '';
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host '';
+        proxy_cache_bypass '';
+    }
+}
+server {
+    listen 5045;
+
+    server_name 10.0.15.31;
+
+    location / {
+        proxy_pass http://localhost:5044;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade '';
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host '';
+        proxy_cache_bypass '';
+    }
+}
+
+EOF
+
+sudo ln -s /etc/nginx/sites-available/10.0.15.31 /etc/nginx/sites-enabled/10.0.15.31
+
+sudo systemctl restart nginx
+
+
+
+
+################################################################
+
+#Instalar logstash
 
 sudo apt-get update && sudo apt-get install logstash -y
 sudo systemctl enable logstash
 sudo systemctl start logstash
 
 # configure logstash to be available on port 5044 and send to elasticsearch
-sudo chmod 777 /etc/logstash
 sudo touch /etc/logstash/conf.d/ex-pipeline.conf
-sudo cat << EOF > /etc/logstash/conf.d/ex-pipeline.conf
+sudo cat  > /etc/logstash/conf.d/ex-pipeline.conf << EOF
 input {
   beats {
-    host => "10.0.15.30"
-    port => "5044"
+    host => "0.0.0.0"
+    port => "5045"
   }
 }
 output {
   elasticsearch {
-    hosts => [ "10.0.15.30:9200" ]
+    hosts => [ "localhost:9200" ]
   }
 }
 EOF
 
-service logstash restart
-
-################################################################
-
-#Instalar elasticsearch
-sudo apt-get update && sudo apt-get install elasticsearch -y
-
-# Configurar elasticsearch.
-# sed -i 's/#network.host: 192.168.0.1/#network.host: 10.0.15.30/g' /etc/elasticsearch/elasticsearch.yml
-# sudo systemctl start elasticsearch
-# sudo systemctl enable elasticsearch
-
-# configure elasticsearch to be available on port 9200
-sudo chmod 777 /etc/elasticsearch
-sudo touch /etc/elasticsearch/elasticsearch.yml
-sudo cat << EOF > /etc/elasticsearch/elasticsearch.yml
-path.data: /var/lib/elasticsearch
-path.logs: /var/log/elasticsearch
-network.host: 10.0.15.30
-http.port: 9200-9300
-EOF
-sudo service elasticsearch restart
-# available on startup
-update-rc.d elasticsearch defaults 95 10
-
-################################################################
-
-#Instalar Kibana
-sudo apt-get install kibana -y
-
-# configure kibana to be available on port 5601 and connect to elasticsearch instance
-sudo  chmod 777 /etc/kibana
-sudo touch /etc/kibana/kibana.yml
-sudo cat << EOF > /etc/kibana/kibana.yml
-server.port: 5601
-server.host: 10.0.15.30
-elasticsearch.url: http://10.0.15.30:9200
-EOF
-
-sudo service kibana restart
-
-# available on startup
-sudo update-rc.d kibana defaults 95 10
-# sudo systemctl enable kibana
-# sudo systemctl start kibana
+# service logstash restart
