@@ -49,7 +49,7 @@ Alias /blog /usr/share/wordpress
 </Directory>
 EOF
 sudo a2ensite wordpress
-#sudo a2enmod rewrite
+sudo a2enmod rewrite
 sudo chown -R www-data:www-data /var/www/html
 sudo service apache2 reload -y
 
@@ -62,17 +62,35 @@ sed -i "s/display_errors = .*/display_errors = On/" /etc/php/7.0/apache2/php.ini
 sudo service apache2 restart
 
 # Configurar Wordpress para que use la DB
-cat > /etc/wordpress/config-10.0.15.20.php <<EOF
+cat > /etc/wordpress/config-10.0.15.30.php <<EOF
 <?php
 define('DB_NAME', '$DBNAME');
 define('DB_USER', '$DBUSER');
 define('DB_PASSWORD', '$DBPASSWD');
-define('DB_HOST', '10.0.15.20');
+define('DB_HOST', '10.0.15.30');
 define('DB_COLLATE', 'utf8_general_ci');
 define('WP_CONTENT_DIR', '/usr/share/wordpress/wp-content');
 ?>
 EOF
 
-sudo service apache2 restart -y
+sudo service apache2 reload -y
 sudo service mysql start -y
+
+# Instalar Filebeat
+wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch | sudo apt-key add -
+echo "deb https://artifacts.elastic.co/packages/7.x/apt stable main" | sudo tee -a /etc/apt/sources.list.d/elastic-7.x.list
+sudo apt-get update && sudo apt-get install -y filebeat
+
+# Deshabilitar el output de elasticsearch y habilitando el del logstach:
+sudo sed -i '176 c\ #output.elasticsearch:' /etc/filebeat/filebeat.yml
+sudo sed -i '178 c\ #hosts: ["localhost:9200"]' /etc/filebeat/filebeat.yml
+sudo sed -i '189 c\ output.logstash:' /etc/filebeat/filebeat.yml
+sudo sed -i '191 c\ hosts: ["localhost:5044"]' /etc/filebeat/filebeat.yml
+
+# load the  index template into Elasticsearch manually:./filebeat setup --template -E output.logstash.enabled=false -E 'output.elasticsearch.hosts=["localhost:9200"]'
+sudo ./filebeat setup --template -E output.logstash.enabled=false -E 'output.elasticsearch.hosts=["localhost:9200"]'
+#sudo filebeat setup --template -E output.logstash.enabled=false -E 'output.elasticsearch.hosts=["10.0.15.30:9200"]'
+sudo filebeat setup -e -E output.logstash.enabled=false -E output.elasticsearch.hosts=['10.0.15.30:9200'] -E setup.kibana.host=10.0.15.30:5601
+sudo systemctl start filebeat
+sudo systemctl enable filebeat
 
