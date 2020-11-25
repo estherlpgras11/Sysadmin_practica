@@ -82,13 +82,16 @@ echo "deb https://artifacts.elastic.co/packages/7.x/apt stable main" | sudo tee 
 sudo apt-get update && sudo apt-get install -y filebeat
 
 # Deshabilitar el output de elasticsearch y habilitando el del logstach:
-sudo sed -i '176 c\ #output.elasticsearch:' /etc/filebeat/filebeat.yml
-sudo sed -i '178 c\ #hosts: ["localhost:9200"]' /etc/filebeat/filebeat.yml
-sudo sed -i '189 c\ output.logstash:' /etc/filebeat/filebeat.yml
-sudo sed -i '191 c\ hosts: ["localhost:5045"]' /etc/filebeat/filebeat.yml
+sudo rm /etc/filebeat/filebeat.yml
+sudo cp /vagrant/filebeat.yml /etc/filebeat
+
+# filebeat setup -e \
+#   -E output.logstash.enabled=false \
+#   -E output.elasticsearch.hosts=['10.0.15.31:9200'] \
+#   -E setup.kibana.host=10.0.15.31:5600
 
 # load the  index template into Elasticsearch manually:./filebeat setup --template -E output.logstash.enabled=false -E 'output.elasticsearch.hosts=["localhost:9200"]'
-#filebeat setup --index-management -E output.logstash.enabled=false -E 'output.elasticsearch.hosts=["192.168.50.2:9200"]'
+#filebeat setup --index-management -E output.logstash.enabled=false -E 'output.elasticsearch.hosts=["10.0.15.31:9200"]'
 
 sudo systemctl start filebeat
 sudo systemctl enable filebeat

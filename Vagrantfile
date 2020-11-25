@@ -8,8 +8,10 @@ Vagrant.configure("2") do |config|
     	elk.vm.synced_folder ".", "/vagrant"
     	elk.vm.network "private_network", ip: "10.0.15.31"
     	elk.vm.network "forwarded_port", guest: 5601, host: 5600 #kivana 
-    	elk.vm.provider "virtualbox" do |vb|
-      		vb.memory = "2560"
+      elk.vm.network "forwarded_port", guest: 9200, host: 9200 #elastic
+      elk.vm.network "forwarded_port", guest: 5044, host: 5045 #logstash 
+      elk.vm.provider "virtualbox" do |vb|
+      		vb.memory = "4500"
       		vb.cpus = 2
     	end
    	 	elk.vm.provision "shell", path: "ELK_configure.sh" 
