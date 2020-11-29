@@ -2,7 +2,7 @@
 #!/usr/bin/env bash
 
 apt-get update
-apt-get install curl nginx  -y
+apt-get install curl -y
 
 # install java 8
 sudo apt-get install default-jre -y
@@ -89,6 +89,9 @@ sudo systemctl enable kibana
 
 
 ################################################### NGINX ###########################################################  
+
+#Instalamos nginx
+apt-get install curl nginx  -y
 
 #Creamos un proxy para el enrutamiento:
 sudo cat > /etc/nginx/sites-available/10.0.15.31 << EOF
