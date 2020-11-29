@@ -1,39 +1,39 @@
 
 #!/usr/bin/env bash
 
+
+################################################ MYSQL ########################################################  
+
+# Definimos variables:
 DBNAME=wordpress_db
 DBUSER=keepcoding
 DBPASSWD=keepcoding
 
+# Indicamos qué password vamos a utilizar para el MySQL:
 apt-get update
-apt-get install curl 2>/dev/null
-
 debconf-set-selections <<< "mysql-server mysql-server/root_password password $DBPASSWD"
 debconf-set-selections <<< "mysql-server mysql-server/root_password_again password $DBPASSWD"
-debconf-set-selections <<< "phpmyadmin phpmyadmin/dbconfig-install boolean true"
-debconf-set-selections <<< "phpmyadmin phpmyadmin/app-password-confirm password $DBPASSWD"
-debconf-set-selections <<< "phpmyadmin phpmyadmin/mysql/admin-pass password $DBPASSWD"
-debconf-set-selections <<< "phpmyadmin phpmyadmin/mysql/app-pass password $DBPASSWD"
-debconf-set-selections <<< "phpmyadmin phpmyadmin/reconfigure-webserver multiselect none"
 
-#  intall wordpress, php, mysql y admin interface
+# Instalamos el MySQL:
 sudo apt-get update
-sudo apt-get -y install wordpress php libapache2-mod-php mysql-server php-mysql phpmyadmin
+sudo apt-get -y install mysql-server php php-mysql
 
-# crear DB
+# Creamos una DB:
 mysql -uroot -p$DBPASSWD -e "CREATE DATABASE $DBNAME"
 mysql -uroot -p$DBPASSWD -e "grant all privileges on $DBNAME.* to '$DBUSER'@'%' identified by '$DBPASSWD'"
 mysql -uroot -p$DBPASSWD -e "FLUSH PRIVILEGES"
 
-# update mysql conf file to allow remote access to the db
+# Modificamos el arcivo mysqld.cnf para permitir el acceso remoto a la DB:
 sudo sed -i "s/.*bind-address.*/bind-address = 0.0.0.0/" /etc/mysql/mysql.conf.d/mysqld.cnf
 sudo service mysql restart
+sudo service mysql start -y
 
-#Instalación apache
-apt-get -y install apache2 php-curl php-gd php-mysql php-gettext 
-#a2enmod rewrite
 
-#Configuración apache
+################################################ APACHE #########################################################  
+
+apt-get -y install apache2 libapache2-mod-php php-curl php-gd php-gettext
+
+#Configuración del wordpress en el apache
 cat > /etc/apache2/sites-available/wordpress.conf <<EOF
 Alias /blog /usr/share/wordpress
 <Directory /usr/share/wordpress>
@@ -53,15 +53,13 @@ EOF
 sudo chown -R www-data:www-data /var/www/html
 sudo service apache2 reload -y
 
-# Phpmyadmin setup
-sed -i "s/AllowOverride None/AllowOverride All/g" /etc/apache2/apache2.conf
-rm -rf /var/www/html
-ln -fs /vagrant/public /var/www/html
-sed -i "s/error_reporting = .*/error_reporting = E_ALL/" /etc/php/7.0/apache2/php.ini
-sed -i "s/display_errors = .*/display_errors = On/" /etc/php/7.0/apache2/php.ini
-sudo service apache2 restart
 
-# Configurar Wordpress para que use la DB
+############################################### WORDPRESS #######################################################  
+
+# Instalamos el Wordpress:
+sudo apt-get -y install wordpress 
+
+# Configuramos el Wordpress para que use la DB y habilitamos el
 cat > /etc/wordpress/config-10.0.15.30.php <<EOF
 <?php
 define('DB_NAME', '$DBNAME');
@@ -70,33 +68,34 @@ define('DB_PASSWORD', '$DBPASSWD');
 define('DB_HOST', '10.0.15.30');
 define('DB_COLLATE', 'utf8_general_ci');
 define('WP_CONTENT_DIR', '/usr/share/wordpress/wp-content');
+define('WP_DEBUG', true);
+define('WP_DEBUG_LOG', true);
+define('WP_DEBUG_DISPLAY', false);
 ?>
 EOF
+
 sudo a2ensite wordpress
 sudo service apache2 reload -y
-sudo service mysql start -y
 
-# Instalar Filebeat
+############################################### FILEBEAT ########################################################  
+
+# Instalamos el Filebeat
 wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch | sudo apt-key add -
 echo "deb https://artifacts.elastic.co/packages/7.x/apt stable main" | sudo tee -a /etc/apt/sources.list.d/elastic-7.x.list
 sudo apt-get update && sudo apt-get install -y filebeat
 
-# Deshabilitar el output de elasticsearch y habilitando el del logstach:
+# Eliminamos el .yml original y lo substituimos por el que se encuentra en /vagrant para deshabilitar el output de elasticsearch y habilitar el del logstach.
 sudo rm /etc/filebeat/filebeat.yml
 sudo cp /vagrant/filebeat.yml /etc/filebeat
 
-# filebeat setup -e \
-#   -E output.logstash.enabled=false \
-#   -E output.elasticsearch.hosts=['10.0.15.31:9200'] \
-#   -E setup.kibana.host=10.0.15.31:5600
-
-# load the  index template into Elasticsearch manually:
+# Cargamos el index template en el Elasticsearch manualmente:
 sudo filebeat setup --index-management -E output.logstash.enabled=false -E 'output.elasticsearch.hosts=["10.0.15.31:9201"]'
 sudo filebeat setup -e -E output.logstash.enabled=false -E output.elasticsearch.hosts=['10.0.15.31:9201'] -E setup.kibana.host=10.0.15.31:5601
-sudo systemctl enable filebeat
 
+# Habilitamos los modulos apache y mysql 
 sudo filebeat modules enable apache mysql
 
+# Reiniciamos
 sudo systemctl start filebeat
 sudo systemctl enable filebeat
 
