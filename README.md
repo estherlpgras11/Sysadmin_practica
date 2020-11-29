@@ -22,27 +22,29 @@ Para enviar los datos montamos otro stack, en el que instalaremos un servicio we
 															 vagrant
 															    .
 															    .
-				 VM Ubuntu (ubuntu 16.04) ...................................................... VM ELK (ubuntu 16.04)
-						 .																			.
-						 .																			.
-			.........................................												... Elasticsearch
-			.			 .            .				.												.	
-			.			 .			  .				.												.
-			.			 .			  . 			.					beats						.
-		  MySQL	   	   Apache	  Wordpress		 Filebeat ----------------------------------------> ................Lostash
-																									.
-																									.
-																									......................Kivana
-																									.
-																									.
-																								  Nginx
+				 VM Ubuntu (ubuntu 16.04) ...................................... VM ELK (ubuntu 16.04)
+						 .																.
+						 .																.
+			...................................											... Elasticsearch
+			.		  .           .		      .											.	
+			.	 	  .			  .			  .											.
+			.		  .			  . 		  .					beats					.
+		  MySQL	    Apache	  Wordpress	   Filebeat ----------------------------------> ................Lostash
+																						.
+																						.
+																						......................Kivana
+																						.
+																						.
+																					  Nginx
 
 
 # Setup de la VM Ubuntu y VM ELK
 
-## VM ELK. Usamos el box ubuntu/xenial64 para levantar una máquina con ubuntu 16.04, usando virtualbox como provider. Mapeamos los puertos en los que escucharan los servicios ELK. Realizamos el aprovisionamiento a través de "ELK_configure.sh", que contiene el scritping necesario para automatizar la instalación y configuración del stack.
+## VM ELK.
+ Usamos el box ubuntu/xenial64 para levantar una máquina con ubuntu 16.04, usando virtualbox como provider. Mapeamos los puertos en los que escucharan los servicios ELK. Realizamos el aprovisionamiento a través de "ELK_configure.sh", que contiene el scritping necesario para automatizar la instalación y configuración del stack.
 
-## VM Ubuntu. Usamos el box ubuntu/xenial64 para levantar una máquina con ubuntu 16.04, usando virtualbox como provider. Mapeamos el puerto 80 del guest al puerto 8000 del host para poder ver el wordpress en nuestra máquina física cuando esté levantado. Realizamos el aprovisionamiento a través de "bootstrap.sh", que contiene el scritping necesario para automatizar la instalación y configuración del wordpress y sus dependencias. 	
+## VM Ubuntu. 
+Usamos el box ubuntu/xenial64 para levantar una máquina con ubuntu 16.04, usando virtualbox como provider. Mapeamos el puerto 80 del guest al puerto 8000 del host para poder ver el wordpress en nuestra máquina física cuando esté levantado. Realizamos el aprovisionamiento a través de "bootstrap.sh", que contiene el scritping necesario para automatizar la instalación y configuración del wordpress y sus dependencias. 	
 
 Compartimos la carpeta en la que se encuentra el Vagrantfile con ambas máquinas, en el directorio /vagrant, para poder guardar ahí los archivos .yml y editarlos desde el host. Esto lo hacemos una vez están los servicios arrancados en ambas máquinas, entrando mediante ssh y moviendo los archivos "filebeat.yml", "elasticsearch.yml" y "kibana.yml" al directorio /vagrant. Los editamos en local para realizar las configuraciones correspondientes y luego reemplazamos los archivos originales por los modificados.
 
@@ -52,7 +54,8 @@ Compartimos la carpeta en la que se encuentra el Vagrantfile con ambas máquinas
 
 Intalamos el nginx para realizar el enrutamiento de puerto, y el Java para poder arrancar el Elasticsearh, que requiere al menos Java 8 para funcionar.
 
-## Para instalar el stack ELK, nos decargamos la Public Signing Key y guardamos el repositorio en /etc/apt/sources.list.d/elastic-7.x.list. Una vez hecho esto, ya podemos  instalar el Logstash, el Elasticsearch y el Kibana mediante APT. 
+## Instalación stack ELK
+Para instalar el stack ELK, nos decargamos la Public Signing Key y guardamos el repositorio en /etc/apt/sources.list.d/elastic-7.x.list. Una vez hecho esto, ya podemos  instalar el Logstash, el Elasticsearch y el Kibana mediante APT. 
 Para realizar las configuraciones de cada servicio arrancamos la máquina y accedemos a los directorios  /etc/elasticsearch  y  /etc/kibana, copiamos los .yml de cada directorio (elasticsearch.yml  y  kibana.yml) y los colocamos en el directorio /vagrant. De este modo, podremos editar los ficheros en local. (Previamente había intentado editarlos directamente mediante sed, pero me daba problemas por que no respetaba las indexaciones del yaml).
 
 ### Elasticsearch: 
